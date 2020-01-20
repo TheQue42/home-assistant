@@ -1,0 +1,10 @@
+{
+  "domain": "sip",
+  "name": "sip",
+  "documentation": "https://www.home-assistant.io/integrations/sip",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": [
+    "@theque42"
+  ]
+}
