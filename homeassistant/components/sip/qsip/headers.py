@@ -1,6 +1,6 @@
 import copy
 from enum import Enum, auto
-
+import random
 """
 Route + Record-Route: <sip:10.10.1.11;lr>
 Via: SIP/2.0/UDP 10.10.1.11:5060;branch=z9hG4bK41fa.6dd492f5e978dc144e4703d094e2ed91.0
@@ -51,8 +51,8 @@ class HeaderType(Enum):
     CUSTOM = auto()
 
     enumString = {CALL_ID: "Call-ID",
-                    TO: "To",
-                    FROM: "From",
+                  TO: "To",
+                  FROM: "From",
                     VIA: "Via",
                     CSEQ: "CSeq",
                     CONTACT: "Contact",
@@ -65,16 +65,37 @@ class HeaderType(Enum):
                     SERVER: "Server",
                     USER_AGENT: "User-Agent",
                     CUSTOM: "",
-                    }
+                  }
 
+class HeaderEnum(Enum):
+    CALL_ID = "Call-ID"
+    TO = "To"
+    FROM = "From"
+    VIA = "Via"
+    CSEQ = "CSeq"
+    CONTACT = "Contact"
+    WARNING = "Warning"
+    ROUTE = "Route"
+    RECROUTE = "Record-Route"
+    REFER_TO = "Refer-To"
+    SUPPORTED = "Supported"
+    ACCEPT = "Accept"
+    SERVER = "Server"
+    SUBJECT = "Subject"
+    USER_AGENT = "User-Agent"
+    CUSTOM = ""
 
-def text(htype: HeaderType) -> str:
-    """
-
-    :type htype: Enum
-    """
-    return HeaderType.enumString[htype]
-
+class MethodEnum(Enum):
+    INVITE = "INVITE"
+    CANCEL = "CANCEL"
+    ACK = "ACK"
+    BYE = "BYE"
+    OPTIONS = "OPTIONS"
+    REGISTER = "REGISTER"
+    SUBSCRIBE = "SUBSCRIBE"
+    PUBLISH = "PUBLISH"
+    NOTIFY = "NOTIFY"
+    REFER = "REFER"
 
 ### TODO: Define multiHeader, or SingleHeader to indicate maxNrOfCount.
 
@@ -86,10 +107,10 @@ class Header:
     # - escaping rules mania
 
     # GenericHeader: Value ;param1=Abc ;param2=xyz
-    def __init__(self, *, htype: HeaderType, value: str, **kwargs):
-        self._parameters = ""
+    def __init__(self, htype: HeaderEnum, value: str, **kwargs):
         self.htype = htype
         self.value = value
+        # TODO: Can we send None as value here, to make "rendering" the value later, performed by an inherited function?
         self.parameters = kwargs  # Param Names in .keys()
 
     def addParam(self, name: str, value: str, allow_update=False):
@@ -99,29 +120,32 @@ class Header:
         self.parameters[name] = value
 
     def __str__(self) -> str:
-        hName = text(self.htype)
-        print(hName + ":" + str(self.value))
+        if self.htype != HeaderEnum.CUSTOM:
+            hName = self.htype.value
+        else:
+            hName = self.hname
+        return hName + ": " + str(self.value)
 
 class CseqHeader(Header):
 
-    def __init(self, method: str, number=-1):
-        self.htype = HeaderType.CSEQ
+    def __init__(self, method: MethodEnum, number=-1):
+        self.htype = HeaderEnum.CSEQ
         if number >= 0:
             number = str(random.randint(0, 2 ** 32 - 1))
         #self.value = method.upper() + " " + number
-        super().__init__(htype=HeaderType.CSEQ, value=method.upper() + " " + number)
+        super().__init__(HeaderEnum.CSEQ, value=method.value + " " + number)
 
 
 class NameAddress(Header):
     """Any header that contains a URI, with an optional display name, such as  From, To, Contact, Rec/Route:"""
-    valid_list = (HeaderType.FROM,
-                  HeaderType.TO,
-                  HeaderType.ROUTE, HeaderType.RECROUTE,
-                  HeaderType.CONTACT,
-                  HeaderType.REFER_TO,
-                  HeaderType.CUSTOM)
+    valid_list = (HeaderEnum.FROM,
+                  HeaderEnum.TO,
+                  HeaderEnum.ROUTE, HeaderEnum.RECROUTE,
+                  HeaderEnum.CONTACT,
+                  HeaderEnum.REFER_TO,
+                  HeaderEnum.CUSTOM)
 
-    def __init__(self, htype: HeaderType, uri: str, display_name="", **kwargs):
+    def __init__(self, htype: HeaderEnum, uri: str, display_name="", **kwargs):
 
         if htype not in NameAddress.valid_list:
             raise GenericSipError
@@ -140,7 +164,7 @@ class NameAddress(Header):
         if len(kwargs.keys()) > 0:
             self.uri = "<" + self.uri +  ">"
         #self.parameters = kwargs  # Param Names in .keys()
-        super().__init__(htype=htype,
+        super().__init__(htype,
                          value=self.display_name + " " + self.uri,
                          **kwargs)
 
@@ -151,9 +175,9 @@ class NameAddress(Header):
 
 class CustomHeader(Header):
 
-    def __init__(self, *, hname: str, value: str, **kwargs):
+    def __init__(self, *, hname: str, hvalue: str, **kwargs):
         self.hname = hname # Only custom, has to keep track of Header name as string.
-        super().__init__(htype=HeaderType.CUSTOM, value=value, **kwargs)
+        super().__init__(htype=HeaderEnum.CUSTOM, value=hvalue, **kwargs)
 
 
 class headerlist():
@@ -161,24 +185,63 @@ class headerlist():
     def __init__(self):
         self.headerList = dict()
 
-    def isAllowed(self, htype: HeaderType):
+    def isAllowed(self, htype: HeaderEnum):
         # Check if duplicates are allowed.
         pass
 
     # headerList["Route"] = [Route-Uri1, Route-Uri2]
     # TODO: https://docs.python.org/2/library/collections.html#collections.defaultdict
-    def add(self, htype: HeaderType, header : Header, addToTop=True):
+    def add(self, header : Header, addToTop=True):
+        # TODO: Storing headers in dict/hash is maybe not so good, since it will change the order relative to how
+        # they were added? It wont change inter-(same)-header order, so it shouldnt FAIL, but it still might feel
+        # weird?
+        htype = header.htype
+        #print("Checking key: ", htype)
         if htype not in self.headerList.keys():
+            #print("Adding: ", str(header))
             self.headerList[htype] = [header]
         else:
-            if not addToTop:
+            if addToTop:
                 self.headerList[htype].append(header)
             else:
-                self.headerList[htype].insert(header)
+                self.headerList[htype].insert(len(self.headerList[htype]), header)
+            #print("Additional: ", len(self.headerList[htype]))
+
+    def __str__(self) -> str:
+        mHeaders = ""
+        for hType in self.headerList.keys():
+            for hInstance in self.headerList[hType]:
+                mHeaders = mHeaders + str(hInstance)
+                mHeaders = mHeaders + "\n"
+                print("Adding", str(hInstance), len(str(hInstance)), " total: ", len(mHeaders))
+        print("Finished:", len(mHeaders), type(mHeaders))
+        return mHeaders
 
 
 if __name__ == "__main__":
     h = headerlist()
-    hh = NameAddress(HeaderType.FROM, uri="taisto@kenneth.qvist", display_name="Taisto k. Qvist", param1="pelle" )
-    id(HeaderType)
-    print(hh)
+    na = NameAddress(HeaderEnum.FROM, uri="taisto@kenneth.qvist", display_name="Taisto k. Qvist", param1="pelle" )
+
+    Cseq = CseqHeader(MethodEnum.INVITE, 5)
+    subject1 = Header(HeaderEnum.SUBJECT, "Super-Extension1")
+    #print("vars:", vars(subject1))
+    subject2 = Header(HeaderEnum.SUBJECT, "Super-Extension2")
+    custom = CustomHeader(hname="MyCustomHeader", hvalue="MyCustomValue", param1="FortyTwo")
+
+    hlist = headerlist()
+    hlist.add(na)
+    hlist.add(Cseq)
+    hlist.add(subject1)
+    hlist.add(custom)
+    hlist.add(subject2)
+    list = ["EEEE", "DDD", "CCCC", "BBBB", "AAA" ]
+    mystring = str()
+    for a in list:
+        mystring = mystring + a
+        print("String is: ", mystring)
+
+
+    #print("vars:", vars(hlist))
+    print("------------------")
+    test = str(hlist)
+    print("Test is:", test)
