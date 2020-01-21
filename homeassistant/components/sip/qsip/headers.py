@@ -59,10 +59,9 @@ class Header:
     # - escaping rules mania
 
     # GenericHeader: Value ;param1=Abc ;param2=xyz
-    def __init__(self, htype: HeaderEnum, value: str, **kwargs):
+    def __init__(self, *, htype: HeaderEnum, hvalues: dict(), **kwargs):
         self.htype = htype
-        self.value = value
-        # TODO: Can we send None as value here, to make "rendering" the value later, performed by an inherited function?
+        self.values = hvalues
         self.parameters = kwargs  # Param Names in .keys()
 
     def addParam(self, name: str, value: str, allow_update=False):
@@ -71,21 +70,71 @@ class Header:
             raise ParameterExists
         self.parameters[name] = value
 
+    def stringifyParameters(self) -> str:
+        params = str()
+        for paramKey in self.parameters.keys():
+            params = params + " ;" + paramKey + "=" + str(self.parameters[paramKey])
+        return params
+
     def __str__(self) -> str:
-        if self.htype != HeaderEnum.CUSTOM:
-            hName = self.htype.value
-        else:
-            hName = self.hname
-        return hName + ": " + str(self.value)
+        #print("Using base-class __str__ for:", self.htype.value)
+        hName = self.htype.value
+        assert len(self.values.keys()) == 1
+        keys = [key for key in self.values.keys()]
+        value = self.values[keys[0]]
+        return hName + ": " + str(value) + self.stringifyParameters()
+
+
+class SimpleHeader(Header):
+
+    def __init__(self, htype: HeaderEnum, hvalue: str, **kwargs):
+        values = dict()
+        values["0"] = hvalue
+        super().__init__(htype=htype, hvalues=values, **kwargs)
+
+    # NO overriding of __str__ here. Use base-class
 
 class CseqHeader(Header):
 
-    def __init__(self, method: MethodEnum, number=-1):
-        self.htype = HeaderEnum.CSEQ
+    def __init__(self, method: MethodEnum, number=-1, **kwargs):
         if number >= 0:
             number = str(random.randint(0, 2 ** 32 - 1))
-        #self.value = method.upper() + " " + number
-        super().__init__(HeaderEnum.CSEQ, value=method.value + " " + number)
+        values = {}
+        values["method"] = method
+        values["number"] = number
+        super().__init__(htype=HeaderEnum.CSEQ, hvalues=values, **kwargs)  ### NOTE: We're sending the object..
+
+    def __str__(self) -> str:
+        hName = self.htype.value
+        return hName + ": " +  self.values["method"].value.upper() + " " + str(self.values["number"]) + self.stringifyParameters()
+
+# Proxy-Authorization: Digest username="goran",realm="ip-solutions.se",
+# nonce="Ub8wuFG/L4xKkTQ5UwWt8/vkeVEuPWip",uri="sip:gabriel@ip-solutions.se",
+# response="76ab7f721cfca9220ba071c038f83774",algorithm=MD5
+class CustomHeader(Header):
+    """"
+    A Custom header can have one or more values. (But no editing currently)
+    TODO: We need to decide if the keys of hvalues["cnonse"] = "skdjakjdk" should be used for anything
+          or if we just ignore them as Accept: text/plain, text/html
+    """
+    def __init__(self, *, hname: str, value, **kwargs): # NOTE, value may be dict or string.
+        self.hname = hname  # Only custom header has to keep track of Header name as string.
+        if isinstance(value, dict):
+            super().__init__(htype=HeaderEnum.CUSTOM, hvalues=value, **kwargs)
+        if isinstance(value, str):
+            values = dict()
+            values["0"] = value
+            super().__init__(htype=HeaderEnum.CUSTOM, hvalues=values, **kwargs)
+
+    def __str__(self):
+        hName = self.hname
+        hValue = str()
+        keyCount = len(self.values.keys())
+        for i, val in enumerate(self.values.keys(), 1):
+            hValue = hValue + self.values[val]
+            if i < keyCount:
+                hValue = hValue + ", "
+        return hName + ": " +  hValue + self.stringifyParameters()
 
 
 class NameAddress(Header):
@@ -102,41 +151,38 @@ class NameAddress(Header):
         if htype not in NameAddress.valid_list:
             raise GenericSipError
 
-        if len(display_name) == 0:
-            self.display_name = None
+        values = {}
+        values["uri"] = uri
+        values["display_name"] = display_name
+        super().__init__(htype=htype, hvalues=values, **kwargs)
+
+    def __str__(self) -> str:
+        hName = self.htype.value
+        hValue = ""
+        if len(self.values["display_name"]) == 0:
+            display_name = None
         else:
             # TODO: ONLY If display_name contains SPACE or "," add ""
-            self.display_name = '"' + display_name + '"'
+            hValue = '"' + self.values["display_name"] + '"' + " "
 
-        # We're assuming that uri does NOT contain "<>"
-        if not uri.find("sip:", 0, 4):
-            uri = "sip:" + uri
-        # TODO: Search for, and escape weird chars...
-        self.uri = uri
-        if len(kwargs.keys()) > 0:
-            self.uri = "<" + self.uri +  ">"
-        #self.parameters = kwargs  # Param Names in .keys()
-        if self.display_name is not None:
-            display_name = self.display_name + " "
+        # TODO: We're assuming that "incoming" uri does NOT contain "<>"
+        if not self.values["uri"].find("sip:", 0, 4):
+            uri = "sip:" + self.values["uri"]
         else:
-            display_name = ""
-        super().__init__(htype,
-                         value=display_name + self.uri,
-                         **kwargs)
+            uri = self.values["uri"]
+        # TODO: Search for, and escape weird chars...
+
+        if len(self.parameters.keys()) > 0:
+            uri = "<" + uri +  ">"
+
+        hValue = hValue + uri
+        return hName + ": " + hValue + self.stringifyParameters()
 
     def setUri(self, uri : str):
-        self.uri = uri
-        # TODO: But now we need to re-generate in Base/Super::?
+        self.values["uri"] = uri
 
 
-class CustomHeader(Header):
-
-    def __init__(self, *, hname: str, hvalue: str, **kwargs):
-        self.hname = hname # Only custom, has to keep track of Header name as string.
-        super().__init__(htype=HeaderEnum.CUSTOM, value=hvalue, **kwargs)
-
-
-class HeaderList():
+class HeaderList:
 
     def __init__(self):
         self.headerList = dict()
@@ -167,27 +213,30 @@ class HeaderList():
         mHeaders = ""
         for hType in self.headerList.keys():
             for hInstance in self.headerList[hType]:
-                params = str()
-                for paramKey in hInstance.parameters.keys():
-                    params = params + " ;" + paramKey + "=" + str(hInstance.parameters[paramKey])
-                mHeaders = mHeaders + str(hInstance) + params
-
+                mHeaders = mHeaders + str(hInstance)
                 mHeaders = mHeaders + "\r\n"
-                #print("Adding", str(hInstance), len(str(hInstance)), " total: ", len(mHeaders))
-        #print("Finished:", len(mHeaders), type(mHeaders))
         return mHeaders
 
 
 if __name__ == "__main__":
     h = HeaderList()
-    na1 = NameAddress(HeaderEnum.FROM, uri="taisto@kenneth.qvist", display_name="Taisto k. Qvist", param1="pelle")
+    na1 = NameAddress(HeaderEnum.FROM, uri="taisto@kenneth.qvist", display_name="Taisto k. Qvist", param1="p1", param2="p2")
     na2 = NameAddress(HeaderEnum.FROM, uri="taisto@kenneth.qvist", param1="pelle")
     na3 = NameAddress(HeaderEnum.FROM, uri="taisto@kenneth.qvist")
-    Cseq = CseqHeader(MethodEnum.INVITE, 5)
-    subject1 = Header(HeaderEnum.SUBJECT, "Super-Extension1", hisesea=11212)
-    #print("vars:", vars(subject1))
-    subject2 = Header(HeaderEnum.SUBJECT, "Super-Extension2", parama=222)
-    custom = CustomHeader(hname="MyCustomHeader", hvalue="MyCustomValue", param1="FortyTwo", X=0.1)
+
+    Cseq = CseqHeader(MethodEnum.INVITE, 5, cseqParam="Nej")
+
+    subject1 = SimpleHeader(HeaderEnum.SUBJECT, "Subject-1", SubjectParam1=11212)
+    subject2 = SimpleHeader(HeaderEnum.SUBJECT, "Subject-2", subjectParam2=222)
+
+    custom1 = CustomHeader(hname="MyCustomHeader", value="MyCustomValue", customParam1="FortyTwo", X=0.1)
+    vvv = dict()
+    vvv["One"] = "realm=trippelsteg.se"
+    vvv["Two"] = "digest"
+    vvv["Three"] = "cnonce=9823139082013982"
+#    print("Types:", type(vvv), type(vvv.keys()))
+
+    custom2 = CustomHeader(hname="Authorization", value=vvv, customParam2="FortyThree", X=0.2)
 
     hlist = HeaderList()
     hlist.add(na1)
@@ -195,7 +244,8 @@ if __name__ == "__main__":
     hlist.add(na3)
     hlist.add(Cseq)
     hlist.add(subject1)
-    hlist.add(custom)
+    hlist.add(custom1)
+    hlist.add(custom2)
     hlist.add(subject2)
 
     #print("vars:", vars(hlist))
