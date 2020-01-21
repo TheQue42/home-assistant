@@ -1,19 +1,5 @@
-import copy
-from enum import Enum, auto
+from enum import Enum
 import random
-
-
-class GenericSipError(Exception):
-    pass
-
-
-class InvalidHeader(GenericSipError):
-    pass
-
-
-class ParameterExists(GenericSipError):
-    pass
-
 
 class HeaderEnum(Enum):
     CALL_ID = "Call-ID"
@@ -33,6 +19,19 @@ class HeaderEnum(Enum):
     SUBJECT = "Subject"
     USER_AGENT = "User-Agent"
     CUSTOM = ""
+
+    def __eq__(self, other):
+        if isinstance(other, HeaderEnum):
+            return self.value == other.value
+        else:
+            if isinstance(other, str):
+                return self.name.lower() == other.lower()
+
+    # We need to be hashable, and defining __eq__() undefines the default __hash__
+    # It should(?) be safe to reuse the Object-class version, since we're not storing anything else
+    # in this class
+    def __hash__(self) -> int:
+        return super().__hash__()
 
 class MethodEnum(Enum):
     INVITE = "INVITE"
@@ -182,23 +181,21 @@ class NameAddress(Header):
         self.values["uri"] = uri
 
 
-class HeaderList:
+class HeaderList:  # Not reallyu a list...
 
     def __init__(self):
         self.headerList = dict()
 
-    def isAllowed(self, htype: HeaderEnum):
-        # Check if duplicates are allowed.
-        pass
+    # TODO: Which headers are allowed multiple times?
 
     # headerList["Route"] = [Route-Uri1, Route-Uri2]
     # TODO: https://docs.python.org/2/library/collections.html#collections.defaultdict
-    def add(self, header : Header, addToTop=True):
+    def add(self, header: Header, addToTop=True):
         # TODO: Storing headers in dict/hash is maybe not so good, since it will change the order relative to how
         # they were added? It wont change inter-(same)-header order, so it shouldnt FAIL, but it still might feel
         # weird?
         htype = header.htype
-        #print("Checking key: ", htype)
+        print("Checking key: ", type(htype))
         if htype not in self.headerList.keys():
             #print("Adding: ", str(header))
             self.headerList[htype] = [header]
@@ -217,38 +214,12 @@ class HeaderList:
                 mHeaders = mHeaders + "\r\n"
         return mHeaders
 
+    def hasHeader(self, hType : HeaderEnum) -> int:
+        if hType in self.headerList.keys():
+            return len(self.headerList[hType])
+            print(self.headerList[hType])
+        else:
+            return 0
 
 if __name__ == "__main__":
-    h = HeaderList()
-    na1 = NameAddress(HeaderEnum.FROM, uri="taisto@kenneth.qvist", display_name="Taisto k. Qvist", param1="p1", param2="p2")
-    na2 = NameAddress(HeaderEnum.FROM, uri="taisto@kenneth.qvist", param1="pelle")
-    na3 = NameAddress(HeaderEnum.FROM, uri="taisto@kenneth.qvist")
-
-    Cseq = CseqHeader(MethodEnum.INVITE, 5, cseqParam="Nej")
-
-    subject1 = SimpleHeader(HeaderEnum.SUBJECT, "Subject-1", SubjectParam1=11212)
-    subject2 = SimpleHeader(HeaderEnum.SUBJECT, "Subject-2", subjectParam2=222)
-
-    custom1 = CustomHeader(hname="MyCustomHeader", value="MyCustomValue", customParam1="FortyTwo", X=0.1)
-    vvv = dict()
-    vvv["One"] = "realm=trippelsteg.se"
-    vvv["Two"] = "digest"
-    vvv["Three"] = "cnonce=9823139082013982"
-#    print("Types:", type(vvv), type(vvv.keys()))
-
-    custom2 = CustomHeader(hname="Authorization", value=vvv, customParam2="FortyThree", X=0.2)
-
-    hlist = HeaderList()
-    hlist.add(na1)
-    hlist.add(na2)
-    hlist.add(na3)
-    hlist.add(Cseq)
-    hlist.add(subject1)
-    hlist.add(custom1)
-    hlist.add(custom2)
-    hlist.add(subject2)
-
-    #print("vars:", vars(hlist))
-    print("------------------")
-    test = str(hlist)
-    print(test)
+    print("__file__", __file__, "name: ", __name__, ", vars: ", vars())
