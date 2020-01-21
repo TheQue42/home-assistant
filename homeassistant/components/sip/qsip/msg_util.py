@@ -16,35 +16,6 @@ def populateMandatoryHeaders(headers):
     # To, From,
     # Via, CSeq, Call-Id, Max-Forwards
 
-templateMap = {
-        "method": "__METHOD__",
-        "requri": "__REQUEST_URI__",
-        "viahost": "__VIA_HOST__",
-        "viabranch": "__VIA_BRANCH__",
-        "route": "__ROUTE_URI__",
-        "contact": "__CONTACT_URI__",
-        "cseqnr": "__CSEQ_NUMBER__",
-        "callid": "__CALL_ID__",
-        "to": "__TO_HEADER__",
-        "from": "__FROM_HEADER__",
-        "require": "__REQUIRE__"  ##TODO
-    }
-
-requestTemplate = '''__METHOD__ __REQUEST_URI__ SIP/2.0\r
-Via: SIP/2.0/UDP __VIA_HOST__;rport;branch=z9hG4bK__VIA_BRANCH__\r
-Route: <__ROUTE_URI__>;lr\r
-Max-Forwards: 70\r
-From: __FROM_HEADER__\r
-To: __TO_HEADER__\r
-Call-ID: __CALL_ID__\r
-CSeq: __CSEQ_NUMBER__ __METHOD__\r
-User-Agent: Qsip/0.0.0.0.0.1\r
-Contact: __CONTACT_URI__\r
-Expires: 0\r
-Content-Type: text/plain\r
-Content-Length:  __CONTENT_LENGTH__\r
-'''
-
 def calc_digest_response(self,
                          username: str,
                          realm: str,

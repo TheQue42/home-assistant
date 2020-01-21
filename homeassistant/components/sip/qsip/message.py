@@ -1,20 +1,17 @@
 # TODO: Future Header Support:
 
 from .msg_util import *
+from .headers import HeaderEnum, HeaderList, CustomHeader, Header, NameAddress, CseqHeader
 
-__VIA_MAGIC_COOKE = "z9hG4Bk"
+
 class msg():
     """Base class for SIP Request and Response"""
 
-    def __init__(self, *, from_info, to_info, request_uri = None, body=""):
+    def __init__(self, *, from_info, to_info, body=""):
         self.body = body[:]
         self.headers = {}
         self._from = from_info
         self._to = to_info
-        if request_uri is not None:
-            self._request_uri = request_uri
-        else
-            self._request_uri = to_info["uri"]
 
         populateMandatoryHeaders(self.headers)
 
@@ -30,7 +27,11 @@ class msg():
 
 class request(msg):
 
-    def __init__(self, req_uri: str, headers, body):
+    def __init__(self, *, headers: HeaderList, body: str, request_uri: str):
+        if request_uri is not None:
+            self._request_uri = request_uri
+        else
+            self._request_uri = to_info["uri"]
 
 
 class response():

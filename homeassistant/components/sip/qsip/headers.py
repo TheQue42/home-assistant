@@ -1,24 +1,6 @@
 import copy
 from enum import Enum, auto
 import random
-"""
-Route + Record-Route: <sip:10.10.1.11;lr>
-Via: SIP/2.0/UDP 10.10.1.11:5060;branch=z9hG4bK41fa.6dd492f5e978dc144e4703d094e2ed91.0
-Max-Forwards: 69
-From: and To:
-Call-ID: 9078dcaf53764deeb2a9f236660f8aab + CSeq: 22126 MESSAGE
-Accept: + Allow
-Supported, Require, Proxy-Require:
-Content-Type: text/plain + Content-Length:    12
-Contact:
-Server, User-Agent: MicroSIP/3.19.10
-Warning, P-hint:
-Refer-To:
-
-Parameters: q=1.0, ;tag ;branch, ;rport, ;received
-
-Refer, Subscribe, Notify
-"""
 
 
 class GenericSipError(Exception):
@@ -33,40 +15,6 @@ class ParameterExists(GenericSipError):
     pass
 
 
-class HeaderType(Enum):
-    CALL_ID = auto()
-    TO = auto()
-    FROM = auto()
-    VIA = auto()
-    CSEQ = auto()
-    CONTACT = auto()
-    WARNING = auto()
-    ROUTE = auto()
-    RECROUTE = auto()
-    REFER_TO = auto()
-    SUPPORTED = auto()
-    ACCEPT = auto()
-    SERVER = auto()
-    USER_AGENT = auto()
-    CUSTOM = auto()
-
-    enumString = {CALL_ID: "Call-ID",
-                  TO: "To",
-                  FROM: "From",
-                    VIA: "Via",
-                    CSEQ: "CSeq",
-                    CONTACT: "Contact",
-                    WARNING: "Warning",
-                    ROUTE: "Route",
-                    RECROUTE: "Record-Route",
-                    REFER_TO: "Refer-To",
-                    SUPPORTED: "Supported",
-                    ACCEPT: "Accept",
-                    SERVER: "Server",
-                    USER_AGENT: "User-Agent",
-                    CUSTOM: "",
-                  }
-
 class HeaderEnum(Enum):
     CALL_ID = "Call-ID"
     TO = "To"
@@ -74,11 +22,12 @@ class HeaderEnum(Enum):
     VIA = "Via"
     CSEQ = "CSeq"
     CONTACT = "Contact"
-    WARNING = "Warning"
     ROUTE = "Route"
     RECROUTE = "Record-Route"
     REFER_TO = "Refer-To"
+    EXPIRES = "Expires"
     SUPPORTED = "Supported"
+    WARNING = "Warning"
     ACCEPT = "Accept"
     SERVER = "Server"
     SUBJECT = "Subject"
@@ -96,6 +45,9 @@ class MethodEnum(Enum):
     PUBLISH = "PUBLISH"
     NOTIFY = "NOTIFY"
     REFER = "REFER"
+    MESSAGE = "MESSAGE"
+
+__VIA_MAGIC_COOKE = "z9hG4Bk"
 
 ### TODO: Define multiHeader, or SingleHeader to indicate maxNrOfCount.
 
@@ -114,7 +66,7 @@ class Header:
         self.parameters = kwargs  # Param Names in .keys()
 
     def addParam(self, name: str, value: str, allow_update=False):
-        # TODO Append multiple parameters
+        # TODO Append multiple parameters, allowAppend=False
         if str in self.parameters.keys() or allow_update:
             raise ParameterExists
         self.parameters[name] = value
@@ -164,8 +116,12 @@ class NameAddress(Header):
         if len(kwargs.keys()) > 0:
             self.uri = "<" + self.uri +  ">"
         #self.parameters = kwargs  # Param Names in .keys()
+        if self.display_name is not None:
+            display_name = self.display_name + " "
+        else:
+            display_name = ""
         super().__init__(htype,
-                         value=self.display_name + " " + self.uri,
+                         value=display_name + self.uri,
                          **kwargs)
 
     def setUri(self, uri : str):
@@ -180,7 +136,7 @@ class CustomHeader(Header):
         super().__init__(htype=HeaderEnum.CUSTOM, value=hvalue, **kwargs)
 
 
-class headerlist():
+class HeaderList():
 
     def __init__(self):
         self.headerList = dict()
@@ -211,37 +167,38 @@ class headerlist():
         mHeaders = ""
         for hType in self.headerList.keys():
             for hInstance in self.headerList[hType]:
-                mHeaders = mHeaders + str(hInstance)
-                mHeaders = mHeaders + "\n"
-                print("Adding", str(hInstance), len(str(hInstance)), " total: ", len(mHeaders))
-        print("Finished:", len(mHeaders), type(mHeaders))
+                params = str()
+                for paramKey in hInstance.parameters.keys():
+                    params = params + " ;" + paramKey + "=" + str(hInstance.parameters[paramKey])
+                mHeaders = mHeaders + str(hInstance) + params
+
+                mHeaders = mHeaders + "\r\n"
+                #print("Adding", str(hInstance), len(str(hInstance)), " total: ", len(mHeaders))
+        #print("Finished:", len(mHeaders), type(mHeaders))
         return mHeaders
 
 
 if __name__ == "__main__":
-    h = headerlist()
-    na = NameAddress(HeaderEnum.FROM, uri="taisto@kenneth.qvist", display_name="Taisto k. Qvist", param1="pelle" )
-
+    h = HeaderList()
+    na1 = NameAddress(HeaderEnum.FROM, uri="taisto@kenneth.qvist", display_name="Taisto k. Qvist", param1="pelle")
+    na2 = NameAddress(HeaderEnum.FROM, uri="taisto@kenneth.qvist", param1="pelle")
+    na3 = NameAddress(HeaderEnum.FROM, uri="taisto@kenneth.qvist")
     Cseq = CseqHeader(MethodEnum.INVITE, 5)
-    subject1 = Header(HeaderEnum.SUBJECT, "Super-Extension1")
+    subject1 = Header(HeaderEnum.SUBJECT, "Super-Extension1", hisesea=11212)
     #print("vars:", vars(subject1))
-    subject2 = Header(HeaderEnum.SUBJECT, "Super-Extension2")
-    custom = CustomHeader(hname="MyCustomHeader", hvalue="MyCustomValue", param1="FortyTwo")
+    subject2 = Header(HeaderEnum.SUBJECT, "Super-Extension2", parama=222)
+    custom = CustomHeader(hname="MyCustomHeader", hvalue="MyCustomValue", param1="FortyTwo", X=0.1)
 
-    hlist = headerlist()
-    hlist.add(na)
+    hlist = HeaderList()
+    hlist.add(na1)
+    hlist.add(na2)
+    hlist.add(na3)
     hlist.add(Cseq)
     hlist.add(subject1)
     hlist.add(custom)
     hlist.add(subject2)
-    list = ["EEEE", "DDD", "CCCC", "BBBB", "AAA" ]
-    mystring = str()
-    for a in list:
-        mystring = mystring + a
-        print("String is: ", mystring)
-
 
     #print("vars:", vars(hlist))
     print("------------------")
     test = str(hlist)
-    print("Test is:", test)
+    print(test)
