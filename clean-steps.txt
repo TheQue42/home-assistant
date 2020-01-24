@@ -1,0 +1,2 @@
+./filter-yaml.py -d -p entity_id:device_tracker.unifi_ plat:unifi unique_id:default entity_id:default
+./filter-yaml.py -f newVersion.json -p unique_id:[rt]x entity_id:sensor.none
