@@ -12,10 +12,8 @@ _scriptVersion=0.1
 
 _FILE_DEV_REGISTRY="/var/lib/ha/.storage/core.device_registry"
 _FILE_ENTITY_REGISTRY="/var/lib/ha/.storage/core.entity_registry"
-_FILE_OUT_STRIPPED="./stripped.json"
-_FILE_OUT_CLEANED="./cleaned.json"
-LogLevel = 0
 
+LogLevel = 0
 
 def printEntity(e, e_id, all_meta=False):
     for entity_key in e.keys():
@@ -32,6 +30,12 @@ def matchEntry(entry, entry_filters : dict) -> bool:
     # TODO: Print warning if a filterKey matches multiple entryKeys? ==> WILL OFTEN AUTOFAIL!
     for filterKey in entry_filters.keys():
         filterKeyFound = False
+        matchList = [ee for ee in entry.keys() if re.search(filterKey, ee)]
+        if len(matchList) > 1:
+            if LogLevel >= 0:
+                print(f"Your filter key [{filterKey}] matches MULTIPLE entry keys! "
+                       "This MAY/MIGHT cause the matching logic to fail. "
+                       "You have been warned.")
         for entryKey in entry.keys():
             if re.search(filterKey, entryKey, re.IGNORECASE):
                 if LogLevel > 3:
@@ -100,7 +104,7 @@ def copyAllButEntries(orgDict: dict(), entry_key: str) -> dict:
     return copyOfDict
 
 
-def processEntities(jsonData: dict(), entry_key: str, entryFilters: dict, **kwargs):
+def processEntities(jsonData: dict(), entry_key: str, entryFilters: dict, **kwargs) -> tuple:
     '''
     Process /var/lib/home-assistant/.storage/core.{jsonKey}_registry
     '''
@@ -110,32 +114,26 @@ def processEntities(jsonData: dict(), entry_key: str, entryFilters: dict, **kwar
     whatsLeft = copyAllButEntries(jsonData, entry_key)
     filteredData = copyAllButEntries(jsonData, entry_key)
     entriesToKeep = []
-    entiresToStrip= []
+    entriesToStrip= []
     origCount = len(jsonData["data"][entry_key])
     print("Will filter with filters", entryFilters)
     #sleep(2)
     for entry in jsonData["data"][entry_key] :
         if matchEntry(entry, entryFilters):
-            if LogLevel > 1: printEntity(entry, "Stripping\n", json.dumps(entry, indent=2, sort_keys=True))
-            entiresToStrip.append(entry)
+            if LogLevel > 1:
+                print("Stripping\n", json.dumps(entry, indent=2, sort_keys=True))
+            entriesToStrip.append(entry)
         else:
             #out = json.dumps(entry, indent=2, sort_keys=True)
-            if LogLevel > 1: printEntity(entry, "Appending\n", json.dumps(entry, indent=2, sort_keys=True))
+            if LogLevel > 1:
+                print("Appending\n", json.dumps(entry, indent=2, sort_keys=True, ensure_ascii=False))
             entriesToKeep.append(entry)
         fullCount +=1
     whatsLeft["data"][entry_key] = entriesToKeep
-    filteredData["data"][entry_key] = entiresToStrip
-    print(f"\nOrig entry Count: {origCount}, Current (filtered) count: {len(entriesToKeep)}, StripCount: {len(entiresToStrip)}\n")
+    filteredData["data"][entry_key] = entriesToStrip
+    print(f"\nOrig entry Count: {origCount}, Current (filtered) count: {len(entriesToKeep)}, StripCount: {len(entriesToStrip)}\n")
 
-    cleanedFile = open(_FILE_OUT_CLEANED, "w")
-    strippedFile = open(_FILE_OUT_STRIPPED, "w")
-    #print("-------------------")
-    json.dump(whatsLeft, cleanedFile, indent=2, sort_keys=True)
-    json.dump(filteredData, strippedFile, indent=2, sort_keys=True)
-    cleanedFile.close()
-    strippedFile.close()
-    os.system("ls -lF *.json")
-    #print("-------------------")
+    return whatsLeft, filteredData
 
 
 def listFilterKeywords(dataKey: str, jsonData : dict):
@@ -179,6 +177,8 @@ def _createArgParser():
             """)
 
     cli.add_argument('--version', "-V", action='version', version=F'%(prog)s {_scriptVersion}')
+
+    cli.add_argument('--suffix', "-s", help="Suffix added to output files", default="")
     #cli.add_argument('--out', "-o", nargs='?', default=sys.stdout)  #type=argparse.FileType('w')
 
     cli.add_argument('--nullcount', "-nc", default=3)
@@ -195,9 +195,10 @@ def _createArgParser():
     # USAGE: filter.py -p uuid:XX, plattform, dev (or -p X:uuid:".*aa"
     cli.add_argument('--pattern', "-p", nargs="*", metavar="key:filter", required=True)
 
-    whatDoFilter = cli.add_mutually_exclusive_group()
-    whatDoFilter.add_argument("--exclude", "-x", action="store_true", default=True)
-    whatDoFilter.add_argument("--include", "-I", action="store_true", default=False)
+    # Lets always filter OUT stuff for now...
+    #whatDoFilter = cli.add_mutually_exclusive_group()
+    #whatDoFilter.add_argument("--exclude", "-x", action="store_true", default=True)
+    #whatDoFilter.add_argument("--include", "-I", action="store_true", default=False)
     #whatDoFilter.add_argument('--list', "-l", help="list only", action="store_true")
 
     loggingDebug = cli.add_mutually_exclusive_group() # required=true if either cli-param is required
@@ -233,31 +234,46 @@ def main(argv = None):
     if os.path.isfile(input_source) :
         try:
             yfile = open(input_source)
+            # TODO : Unicode handling!? Swedish/International char's in names
             jsonObj = json.load(yfile)
         except:
             print("Failed to open file")
+            return False
 
     topKeys = list(jsonObj.keys())
     dataKeys = list(jsonObj["data"].keys())
     dataKey = dataKeys[0]
     count = len(jsonObj["data"][dataKey])
 
-    #print(f"\nReading data for [{dataKey}] Count: {count} With Data Keys: {dataKeys}, and TopKeys {topKeys}")
-    # for w in topKeys:
-    #     if isinstance(jsonObj[w], dict):
-    #         print(f"Key [{w}]: Type [{type(jsonObj[w])}] Id: {jsonObj[w].keys()}\n")
-    #     else:
-    #         print(f"Key [{w}], Id: {jsonObj[w]}\n")
     if args.list_pattern :
-        listFilterKeywords(dataKey, jsonObj)
-    else:
-        patternHash = dict()
-        for p in args.pattern:
-            key, value = p.split(":")
-            patternHash[key] = value
-        processEntities(jsonObj, dataKey, patternHash ) # {"plat" : "zwave", "_id": "default"}
+        if input_source == _FILE_DEV_REGISTRY or input_source == _FILE_ENTITY_REGISTRY:
+            listFilterKeywords(dataKey, jsonObj)
+            return
+        else:
+            print("TODO")
+        return
+
+    patternHash = dict()
+    for p in args.pattern:
+        key, value = p.split(":")
+        patternHash[key] = value
+    whatsLeft, filteredData = processEntities(jsonObj, dataKey, patternHash ) # {"plat" : "zwave", "_id": "default"}
+
+    FILE_OUT_CLEANED = "Cleaned." + dataKey + ".json" + args.suffix
+    FILE_OUT_STRIPPED = "Stripped." + dataKey + ".json" + args.suffix
+    cleanedFile = open(FILE_OUT_CLEANED, "w")
+    strippedFile = open(FILE_OUT_STRIPPED, "w")
+
+    # TODO : Unicode handling!? Swedish/International char's in names
+    json.dump(whatsLeft, cleanedFile, indent=2, sort_keys=True, ensure_ascii=False)
+    json.dump(filteredData, strippedFile, indent=2, sort_keys=True, ensure_ascii=False)
+    cleanedFile.close()
+    strippedFile.close()
+    os.system("ls -lF *.json*")
+
     print(f"\nCompleted processing. You should now REALLY compare the files with the original. Like: \n"
-          f"kdiff3 {input_source} {_FILE_OUT_CLEANED}")
+          f"kdiff3 {input_source} {FILE_OUT_CLEANED}\n"
+          f"diff -abw {input_source} {FILE_OUT_CLEANED}\n")
 
 if __name__ == "__main__":
     sys.exit(main())
