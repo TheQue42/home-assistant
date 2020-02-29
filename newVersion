@@ -788,7 +788,7 @@
         "device_id": "ac813947320141f5be8cb5ed0f511c4f",
         "disabled_by": null,
         "entity_id": "switch.everspring_an180_plug_in_on_off_module_switch",
-        "name": "H\u00f6rnLampa - Nexa",
+        "name": "HörnLampa - Nexa",
         "platform": "zwave",
         "supported_features": 0,
         "unique_id": "21-72057594395049984",
@@ -1078,7 +1078,7 @@
         "platform": "zwave",
         "supported_features": 0,
         "unique_id": "18-72057594344914962",
-        "unit_of_measurement": "\u00b0C"
+        "unit_of_measurement": "°C"
       },
       {
         "capabilities": {},
@@ -1091,7 +1091,7 @@
         "platform": "zwave",
         "supported_features": 0,
         "unique_id": "3-72057594093256722",
-        "unit_of_measurement": "\u00b0C"
+        "unit_of_measurement": "°C"
       },
       {
         "capabilities": {},
@@ -1858,7 +1858,7 @@
         "platform": "zwave",
         "supported_features": 0,
         "unique_id": "28-72057594512687122",
-        "unit_of_measurement": "\u00b0C"
+        "unit_of_measurement": "°C"
       },
       {
         "capabilities": {},
@@ -1919,11 +1919,11 @@
         "device_id": "83dce8dbf3b840ec903dec1094614c07",
         "disabled_by": null,
         "entity_id": "sensor.fibaro_sovrum_temp",
-        "name": "Sovrums\u00d6gat",
+        "name": "SovrumsÖgat",
         "platform": "zwave",
         "supported_features": 0,
         "unique_id": "25-72057594462355474",
-        "unit_of_measurement": "\u00b0C"
+        "unit_of_measurement": "°C"
       },
       {
         "capabilities": {},
@@ -2270,7 +2270,7 @@
         "device_id": "306371f13e7547c982538b9e28a16558",
         "disabled_by": null,
         "entity_id": "zwave.telldus_tzwp_102_plug_in_switch_4",
-        "name": "Socket F\u00f6rr\u00e5det",
+        "name": "Socket Förrådet",
         "platform": "zwave",
         "supported_features": 0,
         "unique_id": "node-30",
@@ -2283,7 +2283,7 @@
         "device_id": "306371f13e7547c982538b9e28a16558",
         "disabled_by": null,
         "entity_id": "sensor.telldus_tzwp_102_plug_in_switch_power",
-        "name": "Elluttag F\u00f6rr\u00e5det - kWh",
+        "name": "Elluttag Förrådet - kWh",
         "platform": "zwave",
         "supported_features": 0,
         "unique_id": "30-72057594546257922",
@@ -2296,7 +2296,7 @@
         "device_id": "306371f13e7547c982538b9e28a16558",
         "disabled_by": null,
         "entity_id": "switch.telldus_tzwp_102_plug_in_switch_switch",
-        "name": "Elluttag F\u00f6rr\u00e5det",
+        "name": "Elluttag Förrådet",
         "platform": "zwave",
         "supported_features": 0,
         "unique_id": "30-72057594546044928",
@@ -2322,7 +2322,7 @@
         "device_id": "306371f13e7547c982538b9e28a16558",
         "disabled_by": null,
         "entity_id": "sensor.telldus_tzwp_102_plug_in_switch_voltage",
-        "name": "Elluttag F\u00f6rr\u00e5det - Volt",
+        "name": "Elluttag Förrådet - Volt",
         "platform": "zwave",
         "supported_features": 0,
         "unique_id": "30-72057594546258178",
@@ -2335,7 +2335,7 @@
         "device_id": "306371f13e7547c982538b9e28a16558",
         "disabled_by": null,
         "entity_id": "sensor.telldus_tzwp_102_plug_in_switch_current",
-        "name": "Elluttag F\u00f6rr\u00e5det - Amp's",
+        "name": "Elluttag Förrådet - Amp's",
         "platform": "zwave",
         "supported_features": 0,
         "unique_id": "30-72057594546258242",
@@ -2439,11 +2439,11 @@
         "device_id": "1bfbdbddb8e74e8093b9ade4bb02c583",
         "disabled_by": null,
         "entity_id": "sensor.sensative_temp_bedroom",
-        "name": "Elliots S\u00e4ng",
+        "name": "Elliots Säng",
         "platform": "zwave",
         "supported_features": 0,
         "unique_id": "31-72057594563018770",
-        "unit_of_measurement": "\u00b0C"
+        "unit_of_measurement": "°C"
       },
       {
         "capabilities": {},
@@ -2651,7 +2651,7 @@
         "platform": "zwave",
         "supported_features": 0,
         "unique_id": "32-72057594579795986",
-        "unit_of_measurement": "\u00b0C"
+        "unit_of_measurement": "°C"
       },
       {
         "capabilities": {},
@@ -2790,7 +2790,7 @@
         "device_id": "1bfbdbddb8e74e8093b9ade4bb02c583",
         "disabled_by": null,
         "entity_id": "zwave.sensative_strips_comfort_zz2",
-        "name": "SS - S\u00e4ngMonitor - Temp",
+        "name": "SS - SängMonitor - Temp",
         "platform": "zwave",
         "supported_features": 0,
         "unique_id": "node-31",
@@ -2807,7 +2807,7 @@
         "platform": "zwave",
         "supported_features": 0,
         "unique_id": "20-72057594378469394",
-        "unit_of_measurement": "\u00b0F"
+        "unit_of_measurement": "°F"
       },
       {
         "capabilities": {},
@@ -2963,7 +2963,7 @@
         "platform": "zwave",
         "supported_features": 0,
         "unique_id": "34-72057594613350418",
-        "unit_of_measurement": "\u00b0C"
+        "unit_of_measurement": "°C"
       },
       {
         "capabilities": {},
